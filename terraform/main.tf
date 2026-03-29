@@ -1,8 +1,14 @@
-resource "azurerm_resource_group" "rg" {
-  name     = var.rg-name
-  location = var.rg-location
+provider "azurerm" {
+  features {}
 }
 
+# Resource Group
+resource "azurerm_resource_group" "rg" {
+  name     = "rg-automation"
+  location = "East US"
+}
+
+# Public IP
 resource "azurerm_public_ip" "pip" {
   name                = "pip1"
   location            = azurerm_resource_group.rg.location
@@ -10,20 +16,23 @@ resource "azurerm_public_ip" "pip" {
   allocation_method   = "Static"
 }
 
+# Virtual Network
 resource "azurerm_virtual_network" "vnet" {
-  name                = var.vnet
+  name                = "vnet1"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   address_space       = ["10.0.0.0/16"]
 }
 
+# Subnet
 resource "azurerm_subnet" "subnet" {
-  name                 = var.subnet
+  name                 = "subnet1"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
 }
 
+# Network Interface
 resource "azurerm_network_interface" "nic" {
   name                = "nic1"
   location            = azurerm_resource_group.rg.location
@@ -37,48 +46,63 @@ resource "azurerm_network_interface" "nic" {
   }
 }
 
+# Network Security Group
 resource "azurerm_network_security_group" "nsg" {
   name                = "nsg1"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
+  # SSH
   security_rule {
-    name                         = "allow-ssh"
-    priority                     = 100
-    protocol                     = "Tcp"
-    direction                    = "Inbound"
-    source_address_prefixes      = ["*"]
-    source_port_ranges           = ["*"]
-    destination_address_prefixes = ["*"]
-    destination_port_ranges      = ["22"]
-    access                       = "Allow"
+    name                       = "allow-ssh"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
   }
 
+  # HTTP
   security_rule {
     name                       = "allow-http"
     priority                   = 101
-    protocol                   = "Tcp"
     direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "80"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
-    access                     = "Allow"
   }
 }
 
-
-resource "azurerm_subnet_network_security_group_association" "subnet_nsg_assoc" {
+# Attach NSG to Subnet
+resource "azurerm_subnet_network_security_group_association" "nsg_assoc" {
   subnet_id                 = azurerm_subnet.subnet.id
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
+# Linux VM
 resource "azurerm_linux_virtual_machine" "vm" {
-  name                  = "vm1"
-  location              = azurerm_resource_group.rg.location
-  resource_group_name   = azurerm_resource_group.rg.name
-  network_interface_ids = [azurerm_network_interface.nic.id]
-  size                  = "Standard_DS1_v2"
+  name                = "vm1"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  size                = "Standard_DS1_v2"
+  network_interface_ids = [
+    azurerm_network_interface.nic.id
+  ]
+
+  admin_username = "azureuser"
+
+  disable_password_authentication = true
+
+  admin_ssh_key {
+    username   = "azureuser"
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
 
   os_disk {
     caching              = "ReadWrite"
@@ -92,8 +116,17 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
 
-  custom_data = base64encode(file("../scripts/install.sh"))
+  custom_data = base64encode(<<EOF
+#!/bin/bash
+apt update -y
+apt install apache2 -y
+systemctl start apache2
+systemctl enable apache2
+EOF
+  )
+}
 
-  admin_username = "azureuser"
-  admin_password = "Password@123"
+# Output Public IP
+output "public_ip" {
+  value = azurerm_public_ip.pip.ip_address
 }
