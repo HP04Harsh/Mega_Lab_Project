@@ -6,14 +6,6 @@ pipeline {
         APP_DIR = "app"
     }
 
-    stages {
-
-        stage('Checkout Code') {
-            steps {
-                git 'https://github.com/HP04Harsh/Mega_Lab_Project.git'
-            }
-        }
-
         stage('Azure Login') {
             steps {
                 withCredentials([
