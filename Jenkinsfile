@@ -8,7 +8,7 @@ pipeline {
 
     stages {
 
-        stage('Set Azure Credentials') {
+        stage('Load Azure Credentials') {
             steps {
                 withCredentials([
                     string(credentialsId: 'azure-client-id', variable: 'ARM_CLIENT_ID'),
@@ -16,12 +16,12 @@ pipeline {
                     string(credentialsId: 'azure-tenant-id', variable: 'ARM_TENANT_ID'),
                     string(credentialsId: 'azure-subscription-id', variable: 'ARM_SUBSCRIPTION_ID')
                 ]) {
-                    sh '''
-                    export ARM_CLIENT_ID=$ARM_CLIENT_ID
-                    export ARM_CLIENT_SECRET=$ARM_CLIENT_SECRET
-                    export ARM_TENANT_ID=$ARM_TENANT_ID
-                    export ARM_SUBSCRIPTION_ID=$ARM_SUBSCRIPTION_ID
-                    '''
+                    script {
+                        env.ARM_CLIENT_ID = ARM_CLIENT_ID
+                        env.ARM_CLIENT_SECRET = ARM_CLIENT_SECRET
+                        env.ARM_TENANT_ID = ARM_TENANT_ID
+                        env.ARM_SUBSCRIPTION_ID = ARM_SUBSCRIPTION_ID
+                    }
                 }
             }
         }
@@ -80,7 +80,6 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 sh '''
-                echo "Checking website..."
                 curl -I http://$VM_IP
                 '''
             }
