@@ -70,7 +70,9 @@ The pipeline follows a modern DevOps workflow to eliminate manual environment se
 
 ### Setup & Execution
 
-1.  Bashgit clone https://github.com/HP04Harsh/azure-cicd-terraform-pipeline.git
+1.  ```
+    git clone https://github.com/HP04Harsh/azure-cicd-terraform-pipeline.git
+    ```
     
 2.  Add your Azure Service Principal and SSH private keys to the Jenkins Credentials Provider.
     
